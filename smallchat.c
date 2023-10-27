@@ -40,6 +40,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <sys/select.h>
 
 /* ============================ Data structures =================================
  * The minimal stuff we can afford to have. This example must be simple
@@ -56,7 +57,7 @@
  * The client can set its nickname with /nick <nickname> command. */
 struct client {
     int fd;     // Client socket.
-    char *nick; // Nickname set by client or NULL.
+    char *nick; // Nickname of the client.
 };
 
 /* This global structure encasulates the global state of the chat. */
@@ -79,10 +80,11 @@ struct chatState *Chat; // Initialized at startup.
 
 /* Create a TCP socket lisetning to 'port' ready to accept connections. */
 int createTCPServer(int port) {
-    int s;
+    int s, yes = 1;
     struct sockaddr_in sa;
 
     if ((s = socket(AF_INET, SOCK_STREAM, 0)) == -1) return -1;
+    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)); // Best effort.
 
     memset(&sa,0,sizeof(sa));
     sa.sin_family = AF_INET;
@@ -167,10 +169,13 @@ void *chatRealloc(void *ptr, size_t size) {
 /* Create a new client bound to 'fd'. This is called when a new client
  * connects. As a side effect updates the global Chat state. */
 struct client *createClient(int fd) {
+    char nick[32]; // Used to create an initial nick for the user.
+    int nicklen = snprintf(nick,sizeof(nick),"user:%d",fd);
     struct client *c = chatMalloc(sizeof(*c));
     socketSetNonBlockNoDelay(fd); // Pretend this will not fail.
     c->fd = fd;
-    c->nick = NULL;
+    c->nick = chatMalloc(nicklen+1);
+    memcpy(c->nick,nick,nicklen);
     assert(Chat->clients[c->fd] == NULL); // This should be available.
     Chat->clients[c->fd] = c;
     /* We need to update the max client set if needed. */
@@ -220,7 +225,7 @@ void initChat(void) {
  * having as socket descriptor 'excluded'. If you want to send something
  * to every client just set excluded to an impossible socket: -1. */
 void sendMsgToAllClientsBut(int excluded, char *s, size_t len) {
-    for (int j = 0; j < Chat->maxclient; j++) {
+    for (int j = 0; j <= Chat->maxclient; j++) {
         if (Chat->clients[j] == NULL ||
             Chat->clients[j]->fd == excluded) continue;
 
@@ -235,10 +240,74 @@ int main(void) {
     initChat();
 
     while(1) {
-        int c = acceptClient(Chat->serversock);
-        if (c == -1) continue;
-        printf("Client accepted FD %d\n", c);
-        sleep(1);
+        fd_set readfds;
+        struct timeval tv;
+        int retval;
+
+        FD_ZERO(&readfds);
+        /* When we want to be notified by select() that there is
+         * activity? If the listening socket has pending clients to accept
+         * or if any other client wrote anything. */
+        FD_SET(Chat->serversock, &readfds);
+
+        for (int j = 0; j <= Chat->maxclient; j++) {
+            if (Chat->clients[j]) FD_SET(j, &readfds);
+        }
+
+        /* Set a timeout for select(), see later why this may be useful
+         * in the future (not now). */
+        tv.tv_sec = 1; // 1 sec timeout
+        tv.tv_usec = 0;
+
+        /* Select wants as first argument the maximum file descriptor
+         * in use plus one. It can be either one of our clients or the
+         * server socket itself. */
+        int maxfd = Chat->maxclient;
+        if (maxfd < Chat->serversock) maxfd = Chat->serversock;
+        retval = select(maxfd+1, &readfds, NULL, NULL, &tv);
+        if (retval == -1) {
+            perror("select() error");
+            exit(1);
+        } else if (retval) {
+            if (FD_ISSET(Chat->serversock, &readfds)) {
+                int fd = acceptClient(Chat->serversock);
+                struct client *c = createClient(fd);
+                char *welcome_msg = "Welcome to Simple Chat!\n";
+                write(c->fd,welcome_msg,strlen(welcome_msg));
+                printf("Connected client fd=%d\n", fd);
+            }
+
+            char readbuf[256];
+            for (int j = 0; j <= Chat->maxclient; j++) {
+                if (Chat->clients[j] == NULL) continue;
+                if (FD_ISSET(j, &readfds)) {
+                    int nread = read(j,readbuf,sizeof(readbuf)-1);
+                    if (nread <= 0) {
+                        printf("Disconnected client fd=%d, nick=%s\n",
+                            j, Chat->clients[j]->nick);
+                        freeClient(Chat->clients[j]);
+                    } else {
+                        struct client *c = Chat->clients[j];
+                        readbuf[nread] = 0;
+
+                        /* Create a message to send everybody (and show
+                         * on the server console) in the form:
+                         * nick> some message. */
+                        char msg[256];
+                        int msglen = snprintf(msg, sizeof(msg),
+                            "%s> %s", c->nick, readbuf);
+                        printf("%s",msg);
+
+                        /* Send it to all the other clients. */
+                        sendMsgToAllClientsBut(j,msg,msglen);
+                    }
+                }
+            }
+        } else {
+            /* Timeout occurred. We don't do anything right now, but in
+             * general this section can be used to wakeup periodically
+             * even if there is no clients activity. */
+        }
     }
     return 0;
 }
