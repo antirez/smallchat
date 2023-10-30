@@ -91,7 +91,7 @@ int createTCPServer(int port) {
     sa.sin_port = htons(port);
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if (bind(s,(struct sockaddr*)&sa,sizeof(sa)) == -1 ||
+    if (bind(s, (struct sockaddr*)&sa, sizeof(sa)) == -1 ||
         listen(s, 511) == -1)
     {
         close(s);
@@ -232,7 +232,7 @@ void sendMsgToAllClientsBut(int excluded, char *s, size_t len) {
         /* Important: we don't do ANY BUFFERING. We just use the kernel
          * socket buffers. If the content does not fit, we don't care.
          * This is needed in order to keep this program simple. */
-        write(Chat->clients[j]->fd,s,len);
+        write(Chat->clients[j]->fd, s, len);
     }
 }
 
@@ -298,7 +298,7 @@ int main(void) {
                      * that we read just half a message. In a normal program
                      * that is not designed to be that simple, we should try
                      * to buffer reads until the end-of-the-line is reached. */
-                    int nread = read(j,readbuf,sizeof(readbuf)-1);
+                    int nread = read(j, readbuf, sizeof(readbuf) - 1);
 
                     if (nread <= 0) {
                         /* Error or short read means that the socket
