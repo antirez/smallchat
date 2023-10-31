@@ -48,7 +48,6 @@
  * =========================================================================== */
 
 #define MAX_CLIENTS 1000 // This is actually the higher file descriptor.
-#define MAX_NICK_LEN 32
 #define SERVER_PORT 7711
 
 /* This structure represents a connected client. There is very little
