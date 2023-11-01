@@ -1,6 +1,6 @@
 # Smallchat
 
-TLDR: This is just a programming example for a few friends of mine. I'll upload a video on my YouTube channel zooming into the code, to see what can be learned from a so simple and broken (on purpose) example.
+TLDR: This is just a programming example for a few friends of mine. I upload a video on my YouTube channel [zooming into the code](https://www.youtube.com/watch?v=eT02gzeLmF0), to see what can be learned from a so simple and broken (on purpose) example.
 
 And now, the full story:
 
