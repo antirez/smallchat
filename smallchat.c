@@ -77,7 +77,7 @@ struct chatState *Chat; // Initialized at startup.
  * Undefined Behavior.
  * =========================================================================== */
 
-/* Create a TCP socket lisetning to 'port' ready to accept connections. */
+/* Create a TCP socket listening to 'port' ready to accept connections. */
 int createTCPServer(int port) {
     int s, yes = 1;
     struct sockaddr_in sa;
