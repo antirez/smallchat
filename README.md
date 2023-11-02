@@ -1,6 +1,6 @@
 # Smallchat
 
-TLDR: This is just a programming example for a few friends of mine. I upload a video on my YouTube channel [zooming into the code](https://www.youtube.com/watch?v=eT02gzeLmF0), to see what can be learned from a so simple and broken (on purpose) example.
+TLDR: This is just a programming example for a few friends of mine. I upload a video on my YouTube channel [zooming into the code](https://www.youtube.com/watch?v=eT02gzeLmF0), to see what can be learned from a so simple and broken (on purpose) example. More videos and improvements will follow, see the end of this README file.
 
 And now, the full story:
 
@@ -12,3 +12,16 @@ Well, with this tricks we can implement a chat that even has the ability to
 let the user set their nick in just 200 lines of code (removing spaces
 and comments, of course). Since I wrote this little program as an example for
 my friends, I decided to also push it here on Github.
+
+## Future work
+
+In the next days I'll continue to modify this program in order to evolve it. Different evolution steps will be tagged according to the YouTube episode of my series on *Writing System Software* covering such changes. This is my plan (may change, but more or less this is what I want to cover):
+
+* Implementing buffering for reading and writing.
+* Avoiding the linear array, using a dictionary data structure to hold the client state.
+* Writing a proper client: line editing able to handle asynchronous events.
+* Implementing channels.
+* Switching from select(2) to more advanced APIs.
+* Simple symmetric encryption for the chat.
+
+Different changes will be covered by one or more YouTube videos. The full commit history will be preserved in this repository.
