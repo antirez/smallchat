@@ -12,3 +12,16 @@ Well, with this tricks we can implement a chat that even has the ability to
 let the user set their nick in just 200 lines of code (removing spaces
 and comments, of course). Since I wrote this little program as an example for
 my friends, I decided to also push it here on Github.
+
+## Preparation
+1. Install gcc and make
+2. Clone this repository
+3. Install nc (netcat) if you don't have it
+
+## Usage 
+1. Run `make` in your terminal, to compile the program, you will need gcc and make installed,and you will get a file called `smallchat` in the same directory.
+2. Run `./smallchat` in your terminal, you will start a server on port 7711.
+3. Open another terminal and run `nc localhost 7711` to connect to the server. Input `/nick yourname` to set your nickname, and then you can chat with others.
+
+The susseccful output will be like this:
+![](https://cdn.studyinglover.com/pic/2023/11/ec426ea656b4bd41bab7f5fcb559d54f.png)
