@@ -345,6 +345,8 @@ int main(void) {
                             char msg[256];
                             int msglen = snprintf(msg, sizeof(msg),
                                 "%s> %s", c->nick, readbuf);
+                            if (msglen >= (int)sizeof(msg))
+                                msglen = sizeof(msg)-1;
                             printf("%s",msg);
 
                             /* Send it to all the other clients. */
