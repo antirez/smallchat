@@ -11,7 +11,7 @@
  *   * Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of Redis nor the names of its contributors may be used
+ *   * Neither the project name of nor the names of its contributors may be used
  *     to endorse or promote products derived from this software without
  *     specific prior written permission.
  *
@@ -48,7 +48,6 @@
  * =========================================================================== */
 
 #define MAX_CLIENTS 1000 // This is actually the higher file descriptor.
-#define MAX_NICK_LEN 32
 #define SERVER_PORT 7711
 
 /* This structure represents a connected client. There is very little
@@ -78,7 +77,7 @@ struct chatState *Chat; // Initialized at startup.
  * Undefined Behavior.
  * =========================================================================== */
 
-/* Create a TCP socket lisetning to 'port' ready to accept connections. */
+/* Create a TCP socket listening to 'port' ready to accept connections. */
 int createTCPServer(int port) {
     int s, yes = 1;
     struct sockaddr_in sa;
@@ -346,6 +345,8 @@ int main(void) {
                             char msg[256];
                             int msglen = snprintf(msg, sizeof(msg),
                                 "%s> %s", c->nick, readbuf);
+                            if (msglen >= (int)sizeof(msg))
+                                msglen = sizeof(msg)-1;
                             printf("%s",msg);
 
                             /* Send it to all the other clients. */
