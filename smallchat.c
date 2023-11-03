@@ -59,7 +59,7 @@ struct client {
     char *nick; // Nickname of the client.
 };
 
-/* This global structure encasulates the global state of the chat. */
+/* This global structure encapsulates the global state of the chat. */
 struct chatState {
     int serversock;     // Listening server socket.
     int numclients;     // Number of connected clients right now.
