@@ -59,7 +59,7 @@ struct client {
     char *nick; // Nickname of the client.
 };
 
-/* This global structure encasulates the global state of the chat. */
+/* This global structure encapsulates the global state of the chat. */
 struct chatState {
     int serversock;     // Listening server socket.
     int numclients;     // Number of connected clients right now.
@@ -77,7 +77,7 @@ struct chatState *Chat; // Initialized at startup.
  * Undefined Behavior.
  * =========================================================================== */
 
-/* Create a TCP socket lisetning to 'port' ready to accept connections. */
+/* Create a TCP socket listening to 'port' ready to accept connections. */
 int createTCPServer(int port) {
     int s, yes = 1;
     struct sockaddr_in sa;
@@ -345,6 +345,8 @@ int main(void) {
                             char msg[256];
                             int msglen = snprintf(msg, sizeof(msg),
                                 "%s> %s", c->nick, readbuf);
+                            if (msglen >= (int)sizeof(msg))
+                                msglen = sizeof(msg)-1;
                             printf("%s",msg);
 
                             /* Send it to all the other clients. */
