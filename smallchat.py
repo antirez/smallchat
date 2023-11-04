@@ -5,28 +5,32 @@ import threading
 ADDRESS = ("localhost", 7711)
 WELCOME = b"Welcome to Simple Chat! Use /nick <nick> to set your nick.\n"
 PREFIX = b"/nick "
-
-
-
-CONNS = []
+CONNS = {}
 
 
 def serve(conn):
     with conn:
-        print(f"Connected by {conn}")
+        fd = conn.fileno()
+        # print(f"Connected by {conn} fd: {fd}")
         conn.sendall(WELCOME)
+        CONNS[fd] = conn
+        msg = b""
         while True:
             data = conn.recv(1024)
             if not data:
+                CONNS.pop(fd)
                 break
-            if data.startswith(PREFIX):
-                nick = data[len(PREFIX):-1]
+            msg += data
+            if data[-1:] != b"\n":
+                continue
+            if msg.startswith(PREFIX):
+                nick = msg[len(PREFIX):-1]
             else:
-                response = nick + b"> " + data
-                print("response", response)
-                for c in CONNS:
+                response = nick + b"> " + msg
+                for c in CONNS.values():
                     if c != conn:
                         c.sendall(response)
+            msg = b""
 
 
 def main():
@@ -38,13 +42,10 @@ def main():
         inputs = [sl]
         outputs = []
         while True:
-            print(f"accepting...")
             inputready, outputready, exceptready = select.select(inputs, outputs, [])
             for s in inputready:
                 if s == sl:
                     conn, addr = sl.accept()
-                    print(f"accepted {addr}")
-                    CONNS.append(conn)
                     th = threading.Thread(target=serve, args=(conn, ))
                     th.start()
                     clients.append(th)

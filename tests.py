@@ -3,7 +3,7 @@ from subprocess import PIPE, Popen
 from sys import executable
 from threading import Thread
 from time import sleep
-from unittest import TestCase
+from unittest import TestCase, skip
 
 
 class Process:
@@ -47,30 +47,69 @@ class TestIntegration:
     def setUp(self):
         self.server = Popen(self.SERVER)
         sleep(.1)
-        self.c_first = Process(self.CLIENT)
-        self.c_second = Process(self.CLIENT)
 
     def tearDown(self):
-        self.c_first.close()
-        self.c_second.close()
         self.server.kill()
         self.server.wait()
 
-    def test(self):
-        l = self.c_first.read()
+    def test_minimal(self):
+        c_first = Process(self.CLIENT)
+        c_second = Process(self.CLIENT)
+        l = c_first.read()
         self.assertEqual(l, self.WELCOME)
-        l = self.c_second.read()
+        l = c_second.read()
         self.assertEqual(l, self.WELCOME)
-        self.c_first.write(b"/nick test-me\n")
-        sleep(.1)  # AH!! I think this sleep has something to do with Antirez next lesson ;-)
-        self.c_first.write(b"Hi!\n")
-        l_second = self.c_second.read()
+        c_first.write(b"/nick test-me\n")
+        self.wait()
+        c_first.write(b"Hi!\n")
+        l_second = c_second.read()
         self.assertEqual(l_second, b"test-me> Hi!\n")
+        c_first.close()
+        c_second.close()
 
+    def test_disconnected(self):
+        c_first = Process(self.CLIENT)
+        c_second = Process(self.CLIENT)
+        c_third = Process(self.CLIENT)
+        self.assertEqual(c_first.read(), self.WELCOME)
+        self.assertEqual(c_second.read(), self.WELCOME)
+        self.assertEqual(c_third.read(), self.WELCOME)
+        c_third.close()
+        c_first.write(b"/nick test-me\n")
+        self.wait()
+        c_first.write(b"Hi!\n")
+        l_second = c_second.read()
+        self.assertEqual(l_second, b"test-me> Hi!\n")
+        c_first.close()
+        c_second.close()
+
+    def test_very_log_message(self):
+        c_first = Process(self.CLIENT)
+        c_second = Process(self.CLIENT)
+        l = c_first.read()
+        self.assertEqual(l, self.WELCOME)
+        l = c_second.read()
+        self.assertEqual(l, self.WELCOME)
+        c_first.write(b"/nick test-me\n")
+        self.wait()
+        msg = b"Hi, it's " + b"me" * 1000 + b".\n"
+        c_first.write(msg)
+        l_second = c_second.read()
+        self.assertEqual(l_second, b"test-me> " + msg)
+        c_first.close()
+        c_second.close()
+
+ 
 
 class TestIntegrationPy(TestIntegration, TestCase):
     SERVER = [executable, "smallchat.py"]
 
+    def wait(self):
+        sleep(.1)  # TODO: remove
+
 
 class TestIntegrationC(TestIntegration, TestCase):
     SERVER = ["./smallchat"]
+
+    def wait(self):
+        sleep(.1)
