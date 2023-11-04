@@ -1,5 +1,6 @@
 from queue import Queue, Empty
 from subprocess import PIPE, Popen
+from sys import executable
 from threading import Thread
 from time import sleep
 from unittest import TestCase
@@ -39,17 +40,21 @@ class Process:
         self.q_in.put(line)
 
 
-class TestIntegration(TestCase):
-    CMD = ["nc", "localhost", "7711"]
+class TestIntegration:
+    CLIENT = ["nc", "localhost", "7711"]
     WELCOME = b"Welcome to Simple Chat! Use /nick <nick> to set your nick.\n"
 
     def setUp(self):
-        self.c_first = Process(self.CMD)
-        self.c_second = Process(self.CMD)
+        self.server = Popen(self.SERVER)
+        sleep(.1)
+        self.c_first = Process(self.CLIENT)
+        self.c_second = Process(self.CLIENT)
 
     def tearDown(self):
         self.c_first.close()
         self.c_second.close()
+        self.server.kill()
+        self.server.wait()
 
     def test(self):
         l = self.c_first.read()
@@ -57,7 +62,15 @@ class TestIntegration(TestCase):
         l = self.c_second.read()
         self.assertEqual(l, self.WELCOME)
         self.c_first.write(b"/nick test-me\n")
-        sleep(.1)  # AH!! I thiunk this sleep has something to do with Antirez next lesson ;-)
+        sleep(.1)  # AH!! I think this sleep has something to do with Antirez next lesson ;-)
         self.c_first.write(b"Hi!\n")
         l_second = self.c_second.read()
         self.assertEqual(l_second, b"test-me> Hi!\n")
+
+
+class TestIntegrationPy(TestIntegration, TestCase):
+    SERVER = [executable, "smallchat.py"]
+
+
+class TestIntegrationC(TestIntegration, TestCase):
+    SERVER = ["./smallchat"]
