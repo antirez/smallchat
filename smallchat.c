@@ -150,11 +150,12 @@ void *chatMalloc(size_t size) {
 
 /* Also aborting realloc(). */
 void *chatRealloc(void *ptr, size_t size) {
-    ptr = realloc(ptr,size);
-    if (ptr == NULL) {
+    void *new_ptr = realloc(ptr, size); 
+    if (new_ptr == NULL) { 
         perror("Out of memory");
         exit(1);
     }
+    ptr = new_ptr; 
     return ptr;
 }
 
