@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <netdb.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,21 @@
  * crazy goals for the future of C: like to make the whole language an
  * Undefined Behavior.
  * =========================================================================== */
+
+/* Set the specified socket in non-blocking mode, with no delay flag. */
+int socketSetNonBlockNoDelay(int fd) {
+    int flags, yes = 1;
+
+    /* Set the socket nonblocking.
+     * Note that fcntl(2) for F_GETFL and F_SETFL can't be
+     * interrupted by a signal. */
+    if ((flags = fcntl(fd, F_GETFL)) == -1) return -1;
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) return -1;
+
+    /* This is best-effort. No need to check for errors. */
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
+    return 0;
+}
 
 /* Create a TCP socket listening to 'port' ready to accept connections. */
 int createTCPServer(int port) {
@@ -39,19 +55,58 @@ int createTCPServer(int port) {
     return s;
 }
 
-/* Set the specified socket in non-blocking mode, with no delay flag. */
-int socketSetNonBlockNoDelay(int fd) {
-    int flags, yes = 1;
+/* Create a TCP socket and connect it to the specified address.
+ * On success the socket descriptor is returned, otherwise -1.
+ *
+ * If 'nonblock' is non-zero, the socket is put in nonblocking state
+ * and the connect() attempt will not block as well, but the socket
+ * may not be immediately ready for writing. */
+int TCPConnect(char *addr, int port, int nonblock) {
+    int s = -1;
+    struct addrinfo hints, *servinfo, *p;
 
-    /* Set the socket nonblocking.
-     * Note that fcntl(2) for F_GETFL and F_SETFL can't be
-     * interrupted by a signal. */
-    if ((flags = fcntl(fd, F_GETFL)) == -1) return -1;
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) return -1;
+    char portstr[6]; /* Max 16 bit number string length. */
+    snprintf(portstr,sizeof(portstr),"%d",port);
+    memset(&hints,0,sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
 
-    /* This is best-effort. No need to check for errors. */
-    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
-    return 0;
+    if (getaddrinfo(addr,portstr,&hints,&servinfo) != 0) return -1;
+
+    for (p = servinfo; p != NULL; p = p->ai_next) {
+        /* Try to create the socket and to connect it.
+         * If we fail in the socket() call, or on connect(), we retry with
+         * the next entry in servinfo. */
+        if ((s = socket(p->ai_family,p->ai_socktype,p->ai_protocol)) == -1)
+            continue;
+
+        /* Put in non blocking state if needed. */
+        if (nonblock && socketSetNonBlockNoDelay(s) == -1) {
+            close(s);
+            return -1;
+        }
+
+        /* Try to connect. */
+        if (connect(s,p->ai_addr,p->ai_addrlen) == -1) {
+            /* If the socket is non-blocking, it is ok for connect() to
+             * return an EINPROGRESS error here. */
+            if (errno == EINPROGRESS && nonblock) return s;
+
+            /* Otherwise it's an error. */
+            close(s);
+            return -1;
+        }
+
+        /* If we ended an iteration of the for loop without errors, we
+         * have a connected socket. Let's return to the caller. */
+        freeaddrinfo(servinfo);
+        return s;
+    }
+
+    /* After checking all the socket families we were not able
+     * to connect. Return an error. */
+    freeaddrinfo(servinfo);
+    return -1;
 }
 
 /* If the listening socket signaled there is a new connection ready to
