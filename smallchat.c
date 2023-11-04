@@ -125,7 +125,7 @@ int acceptClient(int server_socket) {
         socklen_t slen = sizeof(sa);
         s = accept(server_socket,(struct sockaddr*)&sa,&slen);
         if (s == -1) {
-            if (errno == EINTR)
+            if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
                 continue; /* Try again. */
             else
                 return -1;
