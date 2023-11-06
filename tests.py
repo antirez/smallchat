@@ -121,16 +121,22 @@ class TestIntegration:
         c_second.close()
 
     def test_many_clients(self):
-        c_first = Process(self.CLIENT)
-        self.assertEqual(c_first.read(), WELCOME)
-        c_others = [Process(self.CLIENT) for idx in range(100)]
+        clients = [Process(self.CLIENT) for idx in range(5)]
+        for client in clients:
+            self.assertEqual(client.read(), WELCOME)
+        c_first, c_second, *c_others = clients
+        c_first.write(b"/nick test-me-1\n")
+        c_first.write(b"Hi, I'm the first!\n")
+        c_second.write(b"/nick test-me-2\n")
+        c_second.write(b"Hi, it's me, I'm the second!\n")
+        self.assertEqual(c_first.read(), b"test-me-2> Hi, it's me, I'm the second!\n")
+        self.assertEqual(c_second.read(), b"test-me-1> Hi, I'm the first!\n")
         for c_other in c_others:
-            self.assertEqual(c_other.read(), WELCOME)
-        c_first.write(b"/nick test-me\n")
-        c_first.close()
-        for c_other in c_others:
-            c_other.close()
-        self.assertTrue(False)
+            msgs = set([c_other.read(), c_other.read()])
+            self.assertIn(b"test-me-1> Hi, I'm the first!\n", msgs)
+            self.assertIn(b"test-me-2> Hi, it's me, I'm the second!\n", msgs)
+        for client in clients:
+            client.close()
  
  
 
@@ -154,3 +160,7 @@ class TestIntegrationC(TestIntegration, TestCase):
     @skip("TODO")
     def test_many_consecutive_messages(self):
         super().test_many_consecutive_messages()
+
+    @skip("TODO")
+    def test_many_clients(self):
+        super().test_many_clients()

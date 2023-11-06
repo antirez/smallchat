@@ -13,21 +13,21 @@ PREFIX = b"/nick "
 
 class Pool:
     def __init__(self):
-        self.conns = {}
+        self.clients = {}
 
     def add(self, client):
         print(f"Connected client fd={client.fd}, nick={client.nick}")
-        self.conns[client.fd] = client.conn
+        self.clients[client.fd] = client
 
     def delete(self, client):
         print(f"Disconnected client fd={client.fd}, nick={client.nick}")
-        self.conns.pop(client.fd)
+        self.clients.pop(client.fd)
 
     def publish(self, sender, msg):
         response = sender.nick.encode() + b"> " + msg
-        for conn in self.conns.values():
-            if conn != sender:
-                conn.sendall(response)
+        for client in self.clients.values():
+            if client != sender:
+                client.conn.sendall(response)
 
 
 class Client:
