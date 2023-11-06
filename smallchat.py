@@ -1,43 +1,73 @@
 import select
 import socket
+import sys
 import threading
 
-ADDRESS = ("localhost", 7711)
+# TODO:
+# ehm... so many race conditions at the moment
+
+
 WELCOME = b"Welcome to Simple Chat! Use /nick <nick> to set your nick.\n"
 PREFIX = b"/nick "
-CONNS = {}
 
 
-def serve(conn):
-    with conn:
+class Pool:
+    def __init__(self):
+        self.conns = {}
+
+    def add(self, conn):
         fd = conn.fileno()
-        # print(f"Connected by {conn} fd: {fd}")
-        conn.sendall(WELCOME)
-        CONNS[fd] = conn
-        msg = b""
-        while True:
-            data = conn.recv(1024)
-            if not data:
-                CONNS.pop(fd)
-                break
-            msg += data
-            if data[-1:] != b"\n":
-                continue
-            if msg.startswith(PREFIX):
-                nick = msg[len(PREFIX):-1]
-            else:
-                response = nick + b"> " + msg
-                for c in CONNS.values():
-                    if c != conn:
-                        c.sendall(response)
-            msg = b""
+        self.conns[fd] = conn
+
+    def delete(self, conn):
+        fd = conn.fileno()
+        self.conns.pop(fd)
+
+    def publish(self, sender, msg):
+        response = sender.nick + b"> " + msg
+        for conn in self.conns.values():
+            if conn != sender:
+                conn.sendall(response)
 
 
-def main():
+class Client:
+    def __init__(self, pool, conn):
+        self.pool = pool
+        self.conn = conn
+        self.nick = ""
+
+    def _received(self, msg):
+        if msg.startswith(PREFIX):
+            self.nick = msg[len(PREFIX):-1]
+        else:
+            self.pool.publish(self, msg)
+
+    def serve(self):
+        with self.conn:
+            self.conn.sendall(WELCOME)
+            self.pool.add(self.conn)
+            fd = self.conn.fileno()
+            self.pool.conns[fd] = self.conn
+            msg = bytearray()
+            while True:
+                data = self.conn.recv(1024)
+                if not data:
+                    self.pool.delete(self.conn)
+                    break
+                for car in data:
+                    msg.append(car)
+                    if car == ord("\n"):
+                        self._received(msg)
+                        msg.clear()
+
+
+def main(host, port):
+    address = (host, int(port))
+    pool = Pool()
     clients = []
     with socket.socket() as sl:
         sl.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sl.bind(ADDRESS)
+        sl.bind(address)
         sl.listen()
         inputs = [sl]
         outputs = []
@@ -46,11 +76,12 @@ def main():
             for s in inputready:
                 if s == sl:
                     conn, addr = sl.accept()
-                    th = threading.Thread(target=serve, args=(conn, ))
+                    client = Client(pool, conn)
+                    th = threading.Thread(target=client.serve)
                     th.start()
                     clients.append(th)
 
 
 if __name__ == '__main__':
-    main()
+    main(*sys.argv[1:])
 

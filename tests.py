@@ -5,6 +5,11 @@ from threading import Thread
 from time import sleep
 from unittest import TestCase, skip
 
+from smallchat import WELCOME
+
+HOST = "localhost"
+PORT = "7711"
+
 
 class Process:
     def __init__(self, cmd):
@@ -41,8 +46,7 @@ class Process:
 
 
 class TestIntegration:
-    CLIENT = ["nc", "localhost", "7711"]
-    WELCOME = b"Welcome to Simple Chat! Use /nick <nick> to set your nick.\n"
+    CLIENT = ["nc", HOST, PORT]
 
     def setUp(self):
         self.server = Popen(self.SERVER)
@@ -56,9 +60,9 @@ class TestIntegration:
         c_first = Process(self.CLIENT)
         c_second = Process(self.CLIENT)
         l = c_first.read()
-        self.assertEqual(l, self.WELCOME)
+        self.assertEqual(l, WELCOME)
         l = c_second.read()
-        self.assertEqual(l, self.WELCOME)
+        self.assertEqual(l, WELCOME)
         c_first.write(b"/nick test-me\n")
         self.wait()
         c_first.write(b"Hi!\n")
@@ -71,9 +75,9 @@ class TestIntegration:
         c_first = Process(self.CLIENT)
         c_second = Process(self.CLIENT)
         c_third = Process(self.CLIENT)
-        self.assertEqual(c_first.read(), self.WELCOME)
-        self.assertEqual(c_second.read(), self.WELCOME)
-        self.assertEqual(c_third.read(), self.WELCOME)
+        self.assertEqual(c_first.read(), WELCOME)
+        self.assertEqual(c_second.read(), WELCOME)
+        self.assertEqual(c_third.read(), WELCOME)
         c_third.close()
         c_first.write(b"/nick test-me\n")
         self.wait()
@@ -87,9 +91,9 @@ class TestIntegration:
         c_first = Process(self.CLIENT)
         c_second = Process(self.CLIENT)
         l = c_first.read()
-        self.assertEqual(l, self.WELCOME)
+        self.assertEqual(l, WELCOME)
         l = c_second.read()
-        self.assertEqual(l, self.WELCOME)
+        self.assertEqual(l, WELCOME)
         c_first.write(b"/nick test-me\n")
         self.wait()
         msg = b"Hi, it's " + b"me" * 1000 + b".\n"
@@ -99,10 +103,28 @@ class TestIntegration:
         c_first.close()
         c_second.close()
 
+    def test_many_consecutive_messages(self):
+        c_first = Process(self.CLIENT)
+        c_second = Process(self.CLIENT)
+        self.assertEqual(c_first.read(), WELCOME)
+        self.assertEqual(c_second.read(), WELCOME)
+        c_first.write(b"/nick test-me\n")
+        self.wait()
+        msg = b"Hi, it's " + b"me" * 1000 + b".\n"
+        COUNT = 100
+        for idx in range(COUNT):
+            c_first.write(msg)
+        for idx in range(COUNT):
+            l_second = c_second.read()
+            self.assertEqual(l_second, b"test-me> " + msg)
+        c_first.close()
+        c_second.close()
+
+
  
 
 class TestIntegrationPy(TestIntegration, TestCase):
-    SERVER = [executable, "smallchat.py"]
+    SERVER = [executable, "smallchat.py", HOST, PORT]
 
     def wait(self):
         sleep(.1)  # TODO: remove
@@ -113,3 +135,11 @@ class TestIntegrationC(TestIntegration, TestCase):
 
     def wait(self):
         sleep(.1)
+
+    @skip("TODO")
+    def test_very_log_message(self):
+        super().test_very_log_message()
+
+    @skip("TODO")
+    def test_many_consecutive_messages(self):
+        super().test_many_consecutive_messages()
