@@ -325,6 +325,27 @@ void handleClientMessages(fd_set *readfds) {
     }
 }
 
+void initializeSelectParameters(fd_set *readfds, struct timeval *tv) {
+        FD_ZERO(&readfds);
+        /* When we want to be notified by select() that there is
+         * activity? If the listening socket has pending clients to accept
+         * or if any other client wrote anything. */
+        FD_SET(Chat->serversock, readfds);  
+
+        for (int j = 0; j <= Chat->maxclient; j++) {
+            if (Chat->clients[j]) FD_SET(j, readfds); 
+        }
+
+        /* Set a timeout for select(), see later why this may be useful
+         * in the future (not now). */
+        tv->tv_sec = 1; // 1 sec timeout
+        tv->tv_usec = 0;
+}
+
+int determineMaxFileDescriptor(void) {
+    return (Chat->maxclient > Chat->serversock) ? Chat->maxclient : Chat->serversock;
+}
+
 /* The main() function implements the main chat logic:
  * 1. Accept new clients connections if any.
  * 2. Check if any client sent us some new message.
@@ -337,30 +358,16 @@ int main(void) {
         struct timeval tv;
         int retval;
 
-        FD_ZERO(&readfds);
-        /* When we want to be notified by select() that there is
-         * activity? If the listening socket has pending clients to accept
-         * or if any other client wrote anything. */
-        FD_SET(Chat->serversock, &readfds);
-
-        for (int j = 0; j <= Chat->maxclient; j++) {
-            if (Chat->clients[j]) FD_SET(j, &readfds);
-        }
-
-        /* Set a timeout for select(), see later why this may be useful
-         * in the future (not now). */
-        tv.tv_sec = 1; // 1 sec timeout
-        tv.tv_usec = 0;
+        initializeSelectParameters(&readfds, &tv);
 
         /* Select wants as first argument the maximum file descriptor
          * in use plus one. It can be either one of our clients or the
          * server socket itself. */
-        int maxfd = Chat->maxclient;
-        if (maxfd < Chat->serversock) maxfd = Chat->serversock;
+        int maxfd = determineMaxFileDescriptor();
         retval = select(maxfd+1, &readfds, NULL, NULL, &tv);
         if (retval == -1) {
             perror("select() error");
-            exit(EXIT_FAILURE);
+            exit(1);
         } else if (retval) {
             checkAndAcceptNewClients(&readfds);
             handleClientMessages(&readfds);
