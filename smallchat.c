@@ -231,7 +231,9 @@ void sendMsgToAllClientsBut(int excluded, char *s, size_t len) {
         /* Important: we don't do ANY BUFFERING. We just use the kernel
          * socket buffers. If the content does not fit, we don't care.
          * This is needed in order to keep this program simple. */
-        write(Chat->clients[j]->fd,s,len);
+        if (write(Chat->clients[j]->fd,s,len) == -1){
+                perror("Sending message");
+        }
     }
 }
 
@@ -282,7 +284,9 @@ int main(void) {
                 char *welcome_msg =
                     "Welcome to Simple Chat! "
                     "Use /nick <nick> to set your nick.\n";
-                write(c->fd,welcome_msg,strlen(welcome_msg));
+                if (write(c->fd,welcome_msg,strlen(welcome_msg)) == -1){
+                        perror("Writing welcome message");
+                }
                 printf("Connected client fd=%d\n", fd);
             }
 
@@ -336,7 +340,9 @@ int main(void) {
                             } else {
                                 /* Unsupported command. Send an error. */
                                 char *errmsg = "Unsupported command\n";
-                                write(c->fd,errmsg,strlen(errmsg));
+                                if (write(c->fd,errmsg,strlen(errmsg)) == -1){
+                                        perror("Writing error message");
+                                }
                             }
                         } else {
                             /* Create a message to send everybody (and show
