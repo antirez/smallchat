@@ -120,14 +120,25 @@ class TestIntegration:
         c_first.close()
         c_second.close()
 
-
+    def test_many_clients(self):
+        c_first = Process(self.CLIENT)
+        self.assertEqual(c_first.read(), WELCOME)
+        c_others = [Process(self.CLIENT) for idx in range(100)]
+        for c_other in c_others:
+            self.assertEqual(c_other.read(), WELCOME)
+        c_first.write(b"/nick test-me\n")
+        c_first.close()
+        for c_other in c_others:
+            c_other.close()
+        self.assertTrue(False)
+ 
  
 
 class TestIntegrationPy(TestIntegration, TestCase):
     SERVER = [executable, "smallchat.py", HOST, PORT]
 
     def wait(self):
-        sleep(.1)  # TODO: remove
+        pass
 
 
 class TestIntegrationC(TestIntegration, TestCase):
