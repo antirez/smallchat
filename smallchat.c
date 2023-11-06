@@ -49,6 +49,10 @@
 
 #define MAX_CLIENTS 1000 // This is actually the higher file descriptor.
 #define SERVER_PORT 7711
+#define BUFFER_SIZE 256
+#define WELCOME_MESSAGE "Welcome to Simple Chat! Use /nick <nick> to set your nick.\n"
+#define NICK_COMMAND "/nick"
+#define UNSUPPORTED_COMMAND_MSG "Unsupported command\n"
 
 /* This structure represents a connected client. There is very little
  * info about it: the socket descriptor and the nick name, if set, otherwise
@@ -235,6 +239,92 @@ void sendMsgToAllClientsBut(int excluded, char *s, size_t len) {
     }
 }
 
+/* If the listening socket is "readable", it actually means
+* there are new clients connections pending to accept. */
+void checkAndAcceptNewClients(fd_set *readfds) {
+    if (FD_ISSET(Chat->serversock, readfds)) {
+        int fd = acceptClient(Chat->serversock);
+        struct client *c = createClient(fd);
+        /* Send a welcome message. */
+        write(c->fd, WELCOME_MESSAGE, strlen(WELCOME_MESSAGE));
+        printf("Connected client fd=%d\n", fd);
+    }
+}
+
+void processClientCommands(struct client *c, char *readbuf) {
+    /* Remove any trailing newline. */
+    char *p;
+    p = strchr(readbuf,'\r'); if (p) *p = 0;
+    p = strchr(readbuf,'\n'); if (p) *p = 0;
+    /* Check for an argument of the command, after
+    * the space. */
+    char *arg = strchr(readbuf,' ');
+    if (arg) {
+        *arg = 0; /* Terminate command name. */
+        arg++; /* Argument is 1 byte after the space. */
+    }
+                        
+    if (!strcmp(readbuf,"/nick") && arg) {
+        free(c->nick);
+        int nicklen = strlen(arg);
+        c->nick = chatMalloc(nicklen+1);
+        memcpy(c->nick,arg,nicklen+1);
+    } else {
+        /* Unsupported command. Send an error. */
+        write(c->fd, UNSUPPORTED_COMMAND_MSG, strlen(UNSUPPORTED_COMMAND_MSG));
+    }
+}
+
+/* Here for each connected client, check if there are pending
+* data the client sent us. */
+void handleClientMessages(fd_set *readfds) {
+    char readbuf[BUFFER_SIZE];
+    for (int j = 0; j <= Chat->maxclient; j++) {
+        if (!Chat->clients[j]) continue;
+        if (FD_ISSET(j, readfds)) {
+            /* Here we just hope that there is a well formed
+            * message waiting for us. But it is entirely possible
+            * that we read just half a message. In a normal program
+            * that is not designed to be that simple, we should try
+            * to buffer reads until the end-of-the-line is reached. */
+            int nread = read(j, readbuf, sizeof(readbuf) - 1);
+
+            if (nread <= 0) {
+                /* Error or short read means that the socket
+                * was closed. */
+                printf("Disconnected client fd=%d, nick=%s\n",
+                    j, Chat->clients[j]->nick);
+                freeClient(Chat->clients[j]);
+            } else {
+                /* The client sent us a message. We need to
+                * relay this message to all the other clients
+                * in the chat. */
+                struct client *c = Chat->clients[j];
+                readbuf[nread] = 0;
+
+                /* If the user message starts with "/", we
+                * process it as a client command. So far
+                * only the /nick <newnick> command is implemented. */
+                if (readbuf[0] == '/') {
+                    processClientCommands(c, readbuf);
+                } else {
+                    /* Create a message to send everybody (and show
+                    * on the server console) in the form:
+                    *   nick> some message. */
+                    char msg[BUFFER_SIZE];
+                    int msglen = snprintf(msg, sizeof(msg),
+                        "%s> %s", c->nick, readbuf);
+                    if (msglen >= (int)sizeof(msg))
+                        msglen = sizeof(msg)-1;
+                    printf("%s", msg);
+                    /* Send it to all the other clients. */
+                    sendMsgToAllClientsBut(j, msg, msglen);
+                }
+            }
+        }
+    }
+}
+
 /* The main() function implements the main chat logic:
  * 1. Accept new clients connections if any.
  * 2. Check if any client sent us some new message.
@@ -270,91 +360,10 @@ int main(void) {
         retval = select(maxfd+1, &readfds, NULL, NULL, &tv);
         if (retval == -1) {
             perror("select() error");
-            exit(1);
+            exit(EXIT_FAILURE);
         } else if (retval) {
-
-            /* If the listening socket is "readable", it actually means
-             * there are new clients connections pending to accept. */
-            if (FD_ISSET(Chat->serversock, &readfds)) {
-                int fd = acceptClient(Chat->serversock);
-                struct client *c = createClient(fd);
-                /* Send a welcome message. */
-                char *welcome_msg =
-                    "Welcome to Simple Chat! "
-                    "Use /nick <nick> to set your nick.\n";
-                write(c->fd,welcome_msg,strlen(welcome_msg));
-                printf("Connected client fd=%d\n", fd);
-            }
-
-            /* Here for each connected client, check if there are pending
-             * data the client sent us. */
-            char readbuf[256];
-            for (int j = 0; j <= Chat->maxclient; j++) {
-                if (Chat->clients[j] == NULL) continue;
-                if (FD_ISSET(j, &readfds)) {
-                    /* Here we just hope that there is a well formed
-                     * message waiting for us. But it is entirely possible
-                     * that we read just half a message. In a normal program
-                     * that is not designed to be that simple, we should try
-                     * to buffer reads until the end-of-the-line is reached. */
-                    int nread = read(j,readbuf,sizeof(readbuf)-1);
-
-                    if (nread <= 0) {
-                        /* Error or short read means that the socket
-                         * was closed. */
-                        printf("Disconnected client fd=%d, nick=%s\n",
-                            j, Chat->clients[j]->nick);
-                        freeClient(Chat->clients[j]);
-                    } else {
-                        /* The client sent us a message. We need to
-                         * relay this message to all the other clients
-                         * in the chat. */
-                        struct client *c = Chat->clients[j];
-                        readbuf[nread] = 0;
-
-                        /* If the user message starts with "/", we
-                         * process it as a client command. So far
-                         * only the /nick <newnick> command is implemented. */
-                        if (readbuf[0] == '/') {
-                            /* Remove any trailing newline. */
-                            char *p;
-                            p = strchr(readbuf,'\r'); if (p) *p = 0;
-                            p = strchr(readbuf,'\n'); if (p) *p = 0;
-                            /* Check for an argument of the command, after
-                             * the space. */
-                            char *arg = strchr(readbuf,' ');
-                            if (arg) {
-                                *arg = 0; /* Terminate command name. */
-                                arg++; /* Argument is 1 byte after the space. */
-                            }
-
-                            if (!strcmp(readbuf,"/nick") && arg) {
-                                free(c->nick);
-                                int nicklen = strlen(arg);
-                                c->nick = chatMalloc(nicklen+1);
-                                memcpy(c->nick,arg,nicklen+1);
-                            } else {
-                                /* Unsupported command. Send an error. */
-                                char *errmsg = "Unsupported command\n";
-                                write(c->fd,errmsg,strlen(errmsg));
-                            }
-                        } else {
-                            /* Create a message to send everybody (and show
-                             * on the server console) in the form:
-                             *   nick> some message. */
-                            char msg[256];
-                            int msglen = snprintf(msg, sizeof(msg),
-                                "%s> %s", c->nick, readbuf);
-                            if (msglen >= (int)sizeof(msg))
-                                msglen = sizeof(msg)-1;
-                            printf("%s",msg);
-
-                            /* Send it to all the other clients. */
-                            sendMsgToAllClientsBut(j,msg,msglen);
-                        }
-                    }
-                }
-            }
+            checkAndAcceptNewClients(&readfds);
+            handleClientMessages(&readfds);
         } else {
             /* Timeout occurred. We don't do anything right now, but in
              * general this section can be used to wakeup periodically
