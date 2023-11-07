@@ -10,6 +10,20 @@ But then the discussion evolved and I thought, I'll show you a very minimal exam
 
 Well, with these tricks we can implement a chat that even has the ability to let the user set their nick in just 200 lines of code (removing spaces and comments, of course). Since I wrote this little program as an example for my friends, I decided to also push it here on GitHub.
 
+## How to build on Windows
+
+One way is to use a virtual machine, of course, if you find it troublesome, you can use an emulated terminal.Here I introduce a tool that I use in practice.
+
+First, you need to download Cygwin.
+
+Remember, you need to select additional git，ssh，vim，gcc/make, telnet/netcat or other packages you need during installation, which will be used for compilation and operation later.
+
+Then, fork the code, create ssh key in Cygwin and add it to your github. After that, you can clone it to Cygwin and create a branch.
+
+Next you can choose to use 'make' or 'gcc smallchat.c -o smallchat` to compile the code.
+
+Finally, open a window first to run ./smallchat under the folder where the executable file is located.Then open two other windows, run nc localhost 7711, and use /nick yourname to modify the nickname respectively, and now you can speak freely in the chat room.
+
 ## Future work
 
 In the next few days, I'll continue to modify this program in order to evolve it. Different evolution steps will be tagged according to the YouTube episode of my series on *Writing System Software* covering such changes. This is my plan (may change, but more or less this is what I want to cover):
