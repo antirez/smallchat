@@ -62,7 +62,7 @@ int createTCPServer(int port) {
  * and the connect() attempt will not block as well, but the socket
  * may not be immediately ready for writing. */
 int TCPConnect(char *addr, int port, int nonblock) {
-    int s = -1;
+    int s, retval = -1;
     struct addrinfo hints, *servinfo, *p;
 
     char portstr[6]; /* Max 16 bit number string length. */
@@ -83,7 +83,7 @@ int TCPConnect(char *addr, int port, int nonblock) {
         /* Put in non blocking state if needed. */
         if (nonblock && socketSetNonBlockNoDelay(s) == -1) {
             close(s);
-            return -1;
+            break;
         }
 
         /* Try to connect. */
@@ -94,19 +94,17 @@ int TCPConnect(char *addr, int port, int nonblock) {
 
             /* Otherwise it's an error. */
             close(s);
-            return -1;
+            break;
         }
 
         /* If we ended an iteration of the for loop without errors, we
          * have a connected socket. Let's return to the caller. */
-        freeaddrinfo(servinfo);
-        return s;
+        retval = s;
+        break;
     }
 
-    /* After checking all the socket families we were not able
-     * to connect. Return an error. */
     freeaddrinfo(servinfo);
-    return -1;
+    return retval; /* Will be -1 if no connection succeded. */
 }
 
 /* If the listening socket signaled there is a new connection ready to
