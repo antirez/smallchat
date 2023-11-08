@@ -6,7 +6,7 @@ WELCOME = b"Welcome to Simple Chat! Use /nick <nick> to set your nick."
 PREFIX = b"/nick "
 
 
-class Channel:
+class Client:
     def __init__(self, conn, protocol_cls, notify_receive, notify_close):
         self.conn = conn
         self.notify_receive = notify_receive
@@ -32,7 +32,7 @@ class Channel:
         self.out_buffer += self.protocol.encode(msg)
 
 
-class Channels:
+class Clients:
     def __init__(self, inputs, outputs):
         self.inputs = inputs
         self.outputs = outputs
@@ -52,7 +52,7 @@ class Channels:
         return self.clients[conn.fileno()]
 
 
-class Client(Channel):
+class ChatClient(Client):
     def __init__(self, conn, protocol_cls, publish, notify_close):
         super().__init__(conn, protocol_cls, self._received, notify_close)
         self.publish = publish
@@ -65,7 +65,7 @@ class Client(Channel):
             self.publish(self, msg)
 
 
-class Clients(Channels):
+class ChatClients(Clients):
     def add(self, client):
         super().add(client)
         print(f"Connected client fd={client.fd}, nick={client.nick}")
@@ -108,13 +108,13 @@ def main(host, port):
         sl.listen()
         inputs = [sl]
         outputs = []
-        clients = Clients(inputs, outputs)
+        clients = ChatClients(inputs, outputs)
         while True:
             inputready, outputready, exceptready = select.select(inputs, outputs, [])
             for s in inputready:
                 if s == sl:
                     conn, addr = sl.accept()
-                    client = Client(conn, Protocol, clients.publish, clients.delete)
+                    client = ChatClient(conn, Protocol, clients.publish, clients.delete)
                     clients.add(client)
                 else:
                     client = clients.get(s)
