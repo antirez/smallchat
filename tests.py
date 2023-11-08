@@ -46,7 +46,10 @@ class Process:
 
 
 class TestIntegration:
+    BIG_MESSAGE_BODY = b"Hi, it's " + b"me" * 10000 + b".\n"
     CLIENT = ["nc", HOST, PORT]
+    CONSECUTIVE_MESSAGES_COUNT = 1000
+    CONTEMPORARY_CLIENTS_COUNT = 500
 
     def setUp(self):
         self.server = Popen(self.SERVER)
@@ -96,7 +99,7 @@ class TestIntegration:
         self.assertEqual(l, WELCOME)
         c_first.write(b"/nick test-me\n")
         self.wait()
-        msg = b"Hi, it's " + b"me" * 1000 + b".\n"
+        msg = self.BIG_MESSAGE_BODY
         c_first.write(msg)
         l_second = c_second.read()
         self.assertEqual(l_second, b"test-me> " + msg)
@@ -110,18 +113,17 @@ class TestIntegration:
         self.assertEqual(c_second.read(), WELCOME)
         c_first.write(b"/nick test-me\n")
         self.wait()
-        msg = b"Hi, it's " + b"me" * 1000 + b".\n"
-        COUNT = 100
-        for idx in range(COUNT):
+        msg = self.BIG_MESSAGE_BODY
+        for idx in range(self.CONSECUTIVE_MESSAGES_COUNT):
             c_first.write(msg)
-        for idx in range(COUNT):
+        for idx in range(self.CONSECUTIVE_MESSAGES_COUNT):
             l_second = c_second.read()
             self.assertEqual(l_second, b"test-me> " + msg)
         c_first.close()
         c_second.close()
 
     def test_many_clients(self):
-        clients = [Process(self.CLIENT) for idx in range(5)]
+        clients = [Process(self.CLIENT) for idx in range(self.CONTEMPORARY_CLIENTS_COUNT)]
         for client in clients:
             self.assertEqual(client.read(), WELCOME)
         c_first, c_second, *c_others = clients
