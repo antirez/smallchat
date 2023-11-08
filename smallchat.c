@@ -48,6 +48,7 @@
  * =========================================================================== */
 
 #define MAX_CLIENTS 1000 // This is actually the higher file descriptor.
+#define MAX_CHANNEL 1000
 #define SERVER_PORT 7711
 
 /* This structure represents a connected client. There is very little
@@ -57,15 +58,26 @@
 struct client {
     int fd;     // Client socket.
     char *nick; // Nickname of the client.
+    char *currentchannel; //Current channel of the client
 };
+
+struct channel
+{   int numclients;
+    char *name; // Channel name.
+    struct client *clients[MAX_CLIENTS]; // Clients subscribe to the channel.
+};
+
 
 /* This global structure encapsulates the global state of the chat. */
 struct chatState {
     int serversock;     // Listening server socket.
     int numclients;     // Number of connected clients right now.
     int maxclient;      // The greatest 'clients' slot populated.
+    int numchannels;    // Number of created channels right now.
     struct client *clients[MAX_CLIENTS]; // Clients are set in the corresponding
                                          // slot of their socket descriptor.
+    struct channel *channels[MAX_CHANNEL];
+    
 };
 
 struct chatState *Chat; // Initialized at startup.
@@ -180,6 +192,7 @@ struct client *createClient(int fd) {
     /* We need to update the max client set if needed. */
     if (c->fd > Chat->maxclient) Chat->maxclient = c->fd;
     Chat->numclients++;
+    c->currentchannel = NULL;
     return c;
 }
 
@@ -203,6 +216,42 @@ void freeClient(struct client *c) {
     free(c);
 }
 
+struct channel *getChannel(char *name){
+    for(int i = 0; i < Chat->numchannels; i++){
+        if (!strcmp(name, Chat->channels[i]->name)){
+            return Chat->channels[i];
+        }
+    }
+    return NULL;
+}
+
+struct channel *createChannel(char *name){
+    struct channel *ch;
+    ch = getChannel(name);
+    if (ch){
+        return ch; // If channel already exists return
+    }
+    ch = chatMalloc(sizeof(*ch));
+    ch->name = chatMalloc(strlen(name)+1);
+    memcpy(ch->name, name, strlen(name));
+    ch->numclients = 0;
+    Chat->channels[Chat->numchannels] = ch;
+    Chat->numchannels++;
+    return ch;
+}
+
+void freeChannel(struct channel *ch){
+    free(ch->name);
+    for(int i = 0; i < Chat->numchannels; i++){
+        // remove from Chat->channels
+        if (!strcmp(ch->name, Chat->channels[i]->name)){
+            Chat->channels[i] = NULL;
+            Chat->numchannels--;
+        }
+    }
+    free(ch);
+}
+
 /* Allocate and init the global stuff. */
 void initChat(void) {
     Chat = chatMalloc(sizeof(*Chat));
@@ -210,6 +259,7 @@ void initChat(void) {
     /* No clients at startup, of course. */
     Chat->maxclient = -1;
     Chat->numclients = 0;
+    Chat->numchannels = 0;
 
     /* Create our listening socket, bound to the given port. This
      * is where our clients will connect. */
@@ -337,7 +387,28 @@ int main(void) {
                                 int nicklen = strlen(arg);
                                 c->nick = chatMalloc(nicklen+1);
                                 memcpy(c->nick,arg,nicklen+1);
-                            } else {
+                            }else if (!strcmp(readbuf, "/channel") && arg){
+                                struct channel *ch = getChannel(arg);
+                                int channellen = strlen(ch->name);
+                                c->currentchannel = chatMalloc(channellen+1);
+                                memcpy(c->currentchannel,ch->name,channellen);
+                                ch->clients[c->fd] = c;
+                                ch->numclients++;
+                                char *welcomemsg = fprintf("Welcome to channel %s.\n |%s|", c->currentchannel, c->currentchannel);
+                                if (write(c->fd,welcomemsg,strlen(welcomemsg)) == -1){
+                                        perror("Writing error message");
+                                }
+                            }else if (!strcmp(readbuf, "/public")){
+                                struct channel *ch = getChannel(c->currentchannel);
+                                
+                                c->currentchannel = NULL;
+                                
+                                char *welcomemsg = "Back to public channel.\n";
+                                if (write(c->fd,welcomemsg,strlen(welcomemsg)) == -1){
+                                        perror("Writing error message");
+                                }
+                            }
+                            else {
                                 /* Unsupported command. Send an error. */
                                 char *errmsg = "Unsupported command\n";
                                 if (write(c->fd,errmsg,strlen(errmsg)) == -1){
