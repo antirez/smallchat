@@ -83,17 +83,20 @@ class ChatClients(Clients):
 
 
 class Protocol:
+    END = b"\n"
+
     def __init__(self, notify):
         self.notify = notify
         self.buff = bytearray()
 
-    @staticmethod
-    def encode(msg):
-        return msg + b"\n"
+    @classmethod
+    def encode(cls, msg):
+        assert not cls.END in msg
+        return msg + cls.END
 
     def decode(self, data):
         for car in data:
-            if car == ord("\n"):
+            if car == ord(self.END):
                 self.notify(self.buff)
                 self.buff.clear()
             else:
@@ -121,10 +124,12 @@ def main(host, port):
                     assert client.conn == s
                     client.raw_receive()
             for s in outputready:
-                if s.fileno() > 0:
-                    client = clients.get(s)
-                    assert client.conn == s
-                    client.raw_send()
+                if s.fileno() <= 0:
+                    # sockets already closed during reception/recv
+                    continue
+                client = clients.get(s)
+                assert client.conn == s
+                client.raw_send()
 
 
 
