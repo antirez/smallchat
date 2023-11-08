@@ -5,10 +5,9 @@ from threading import Thread
 from time import sleep
 from unittest import TestCase, skip
 
-from smallchat import WELCOME
-
 HOST = "localhost"
 PORT = "7711"
+WELCOME = b"Welcome to Simple Chat! Use /nick <nick> to set your nick.\n"
 
 
 class Process:

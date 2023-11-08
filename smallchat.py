@@ -2,7 +2,7 @@ import select
 import socket
 import sys
 
-WELCOME = b"Welcome to Simple Chat! Use /nick <nick> to set your nick.\n"
+WELCOME = b"Welcome to Simple Chat! Use /nick <nick> to set your nick."
 PREFIX = b"/nick "
 
 
@@ -39,12 +39,17 @@ class Protocol:
         self.notify = notify
         self.buff = bytearray()
 
-    def put(self, data):
+    @staticmethod
+    def encode(msg):
+        return msg + b"\n"
+
+    def decode(self, data):
         for car in data:
-            self.buff.append(car)
             if car == ord("\n"):
                 self.notify(self.buff)
                 self.buff.clear()
+            else:
+                self.buff.append(car)
 
 
 class Client:
@@ -59,7 +64,7 @@ class Client:
 
     def _received(self, msg):
         if msg.startswith(PREFIX):
-            self.nick = msg[len(PREFIX):-1].decode()
+            self.nick = msg[len(PREFIX):].decode()
         else:
             self.publish(self, msg)
 
@@ -69,15 +74,15 @@ class Client:
             self.notify_close(self)
             self.conn.close()
         else:
-            self.protocol.put(data)
+            self.protocol.decode(data)
 
     def raw_send(self):
         if self.out_buffer:
             sent = self.conn.send(self.out_buffer)
             self.out_buffer = self.out_buffer[sent:]
 
-    def send(self, response):
-        self.out_buffer += response
+    def send(self, msg):
+        self.out_buffer += Protocol.encode(msg)
 
 
 def main(host, port):
