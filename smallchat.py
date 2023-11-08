@@ -1,8 +1,3 @@
-"""
-TODO:
-    avoid sendall (it could block)
-"""
-
 import select
 import socket
 import sys
@@ -60,7 +55,7 @@ class Client:
         self.fd = conn.fileno()
         self.nick = f"user:{self.fd}"
         self.protocol = Protocol(self._received)
-        self.send(WELCOME)
+        self.out_buffer = bytearray()
 
     def _received(self, msg):
         if msg.startswith(PREFIX):
@@ -68,17 +63,21 @@ class Client:
         else:
             self.publish(self, msg)
 
-    def receive(self):
+    def raw_receive(self):
         data = self.conn.recv(1024)
         if not data:
             self.notify_close(self)
             self.conn.close()
-            return False
-        self.protocol.put(data)
-        return True
+        else:
+            self.protocol.put(data)
+
+    def raw_send(self):
+        if self.out_buffer:
+            sent = self.conn.send(self.out_buffer)
+            self.out_buffer = self.out_buffer[sent:]
 
     def send(self, response):
-        self.conn.sendall(response)
+        self.out_buffer += response
 
 
 def main(host, port):
@@ -97,10 +96,17 @@ def main(host, port):
                     conn, addr = sl.accept()
                     client = Client(conn, clients.publish, clients.delete)
                     clients.add(client)
+                    client.send(WELCOME)
                 else:
                     client = clients.get(s)
                     assert client.conn == s
-                    client.receive()
+                    client.raw_receive()
+            for s in outputready:
+                if s.fileno() > 0:
+                    client = clients.get(s)
+                    assert client.conn == s
+                    client.raw_send()
+
 
 
 if __name__ == '__main__':

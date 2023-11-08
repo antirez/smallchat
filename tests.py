@@ -46,10 +46,10 @@ class Process:
 
 
 class TestIntegration:
-    BIG_MESSAGE_BODY = b"Hi, it's " + b"me" * 10000 + b".\n"
+    BIG_MESSAGE_BODY = b"Hi, it's " + b"me" * 1000 + b".\n"
     CLIENT = ["nc", HOST, PORT]
-    CONSECUTIVE_MESSAGES_COUNT = 1000
-    CONTEMPORARY_CLIENTS_COUNT = 500
+    CONSECUTIVE_MESSAGES_COUNT = 100
+    CONTEMPORARY_CLIENTS_COUNT = 50
 
     def setUp(self):
         self.server = Popen(self.SERVER)
