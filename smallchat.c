@@ -220,6 +220,18 @@ void initChat(void) {
     }
 }
 
+/* Traverse all created clients and compare whether the nickname
+ *has been used. If it has been used, return 1,
+ *otherwise return 0*/
+int checkNickUsed(const char *nick) {
+  for (int j = 0; j <= Chat->maxclient; ++j) {
+    if (Chat->clients[j] != NULL && !strcmp(nick, Chat->clients[j]->nick))
+      return 1;
+  }
+  return 0;
+}
+
+
 /* Send the specified string to all connected clients but the one
  * having as socket descriptor 'excluded'. If you want to send something
  * to every client just set excluded to an impossible socket: -1. */
@@ -329,6 +341,14 @@ int main(void) {
                             }
 
                             if (!strcmp(readbuf,"/nick") && arg) {
+                		/*Check if the nickname is already in use*/
+                		if (checkNickUsed(arg)) {
+                  		    char *errmsg = "This nickname is already used by someone "
+                                                   "else, please try another one.\n";
+                  		    write(c->fd, errmsg, strlen(errmsg));
+                                    continue;
+                                }
+
                                 free(c->nick);
                                 int nicklen = strlen(arg);
                                 c->nick = chatMalloc(nicklen+1);
