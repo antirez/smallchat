@@ -216,29 +216,27 @@ void freeClient(struct client *c) {
     free(c);
 }
 
-struct channel *getChannel(char *name){
-    for(int i = 0; i < Chat->numchannels; i++){
-        if (!strcmp(name, Chat->channels[i]->name)){
-            return Chat->channels[i];
-        }
-    }
-    return NULL;
-}
-
 struct channel *createChannel(char *name){
-    struct channel *ch;
-    ch = getChannel(name);
-    if (ch){
-        return ch; // If channel already exists return
-    }
-    ch = chatMalloc(sizeof(*ch));
+    struct channel *ch = chatMalloc(sizeof(*ch));
     ch->name = chatMalloc(strlen(name)+1);
     memcpy(ch->name, name, strlen(name));
     ch->numclients = 0;
+    printf("%d\n", Chat->numchannels);
     Chat->channels[Chat->numchannels] = ch;
     Chat->numchannels++;
     return ch;
 }
+
+struct channel *getChannel(char *name){
+    for(int i = 0; i < Chat->numchannels; i++){
+        if (Chat->channels[i]&&!strcmp(name, Chat->channels[i]->name)){
+            return Chat->channels[i];
+        }
+    }
+    return createChannel(name);
+}
+
+
 
 void freeChannel(struct channel *ch){
     free(ch->name);
@@ -389,18 +387,19 @@ int main(void) {
                                 memcpy(c->nick,arg,nicklen+1);
                             }else if (!strcmp(readbuf, "/channel") && arg){
                                 struct channel *ch = getChannel(arg);
-                                int channellen = strlen(ch->name);
-                                c->currentchannel = chatMalloc(channellen+1);
-                                memcpy(c->currentchannel,ch->name,channellen);
+                                int channelnamelen = strlen(ch->name);
+                                c->currentchannel = chatMalloc(channelnamelen+1);
+                                memcpy(c->currentchannel,ch->name,channelnamelen);
                                 ch->clients[c->fd] = c;
                                 ch->numclients++;
-                                char *welcomemsg = fprintf("Welcome to channel %s.\n |%s|", c->currentchannel, c->currentchannel);
+                                char *welcomemsg = chatMalloc(channelnamelen+1);
+                                sprintf(welcomemsg, "Welcome to channel %s.\n(%s) ", c->currentchannel, c->currentchannel);
                                 if (write(c->fd,welcomemsg,strlen(welcomemsg)) == -1){
                                         perror("Writing error message");
                                 }
                             }else if (!strcmp(readbuf, "/public")){
                                 struct channel *ch = getChannel(c->currentchannel);
-                                
+                                ch->clients[c->fd] = NULL;
                                 c->currentchannel = NULL;
                                 
                                 char *welcomemsg = "Back to public channel.\n";
@@ -425,7 +424,15 @@ int main(void) {
                             if (msglen >= (int)sizeof(msg))
                                 msglen = sizeof(msg)-1;
                             printf("%s",msg);
+                            if (c->currentchannel){
+                                char *channelmsg = chatMalloc(strlen(c->currentchannel)+2);
+                                sprintf(channelmsg, "(%s) ", c->currentchannel);
+                                if (write(c->fd,channelmsg,strlen(channelmsg)) == -1){
+                                        perror("Writing error message");
+                                }
 
+                            }
+                           
                             /* Send it to all the other clients. */
                             sendMsgToAllClientsBut(j,msg,msglen);
                         }
