@@ -244,7 +244,7 @@ void freeChannel(struct channel *ch){
     free(ch->name);
     for(int i = 0; i < Chat->numchannels; i++){
         // remove from Chat->channels
-        if (!strcmp(ch->name, Chat->channels[i]->name)){
+        if (Chat->channels[i]&&!strcmp(ch->name, Chat->channels[i]->name)){
             Chat->channels[i] = NULL;
             Chat->numchannels--;
         }
