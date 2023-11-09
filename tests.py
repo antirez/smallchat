@@ -149,7 +149,7 @@ class TestIntegrationPy(TestIntegration, TestCase):
 
 
 class TestIntegrationC(TestIntegration, TestCase):
-    SERVER = ["./smallchat"]
+    SERVER = ["./smallchat-server"]
 
     def wait(self):
         sleep(.1)

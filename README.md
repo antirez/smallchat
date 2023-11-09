@@ -1,5 +1,9 @@
 # Smallchat
 
+Inspired by Salvatore Sanfilippo's series on creating a chat
+Implemented in python
+
+
 TLDR: This is just a programming example for a few friends of mine. It somehow turned into a set of programming videos, continuing one project I started some time ago: Writing System Software videos series.
 
 1. [First episode](https://www.youtube.com/watch?v=eT02gzeLmF0), how the basic server works.

@@ -1,4 +1,5 @@
 __pycache__
 .vscode
 smallchat.dSYM
-smallchat
+smallchat-client
+smallchat-server
