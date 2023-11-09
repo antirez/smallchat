@@ -48,7 +48,7 @@
  * =========================================================================== */
 
 #define MAX_CLIENTS 1000 // This is actually the higher file descriptor.
-#define MAX_CHANNEL 1000
+#define MAX_CHANNELS 1000
 #define SERVER_PORT 7711
 
 /* This structure represents a connected client. There is very little
@@ -62,7 +62,8 @@ struct client {
 };
 
 struct channel
-{   int numclients;
+{   
+    int numclients;
     char *name; // Channel name.
     struct client *clients[MAX_CLIENTS]; // Clients subscribe to the channel.
 };
@@ -76,7 +77,7 @@ struct chatState {
     int numchannels;    // Number of created channels right now.
     struct client *clients[MAX_CLIENTS]; // Clients are set in the corresponding
                                          // slot of their socket descriptor.
-    struct channel *channels[MAX_CHANNEL];
+    struct channel *channels[MAX_CHANNELS];
     
 };
 
@@ -217,11 +218,14 @@ void freeClient(struct client *c) {
 }
 
 struct channel *createChannel(char *name){
+    if (Chat->numchannels >= MAX_CHANNELS){
+        perror("Max channel num reached.");
+        exit(-1);
+    }
     struct channel *ch = chatMalloc(sizeof(*ch));
     ch->name = chatMalloc(strlen(name)+1);
     memcpy(ch->name, name, strlen(name));
     ch->numclients = 0;
-    printf("%d\n", Chat->numchannels);
     Chat->channels[Chat->numchannels] = ch;
     Chat->numchannels++;
     return ch;
@@ -236,8 +240,6 @@ struct channel *getChannel(char *name){
     return createChannel(name);
 }
 
-
-
 void freeChannel(struct channel *ch){
     free(ch->name);
     for(int i = 0; i < Chat->numchannels; i++){
@@ -248,6 +250,14 @@ void freeChannel(struct channel *ch){
         }
     }
     free(ch);
+}
+
+void recycleChannel(){
+    for (int i = 0; i< Chat->numchannels;i++){
+        if (Chat->channels[i] && Chat->channels[i]->numclients == 0){
+            freeChannel(Chat->channels[i]);
+        }
+    }
 }
 
 /* Allocate and init the global stuff. */
@@ -385,6 +395,7 @@ int main(void) {
                         printf("Disconnected client fd=%d, nick=%s\n",
                             j, Chat->clients[j]->nick);
                         freeClient(Chat->clients[j]);
+                        recycleChannel();
                     } else {
                         /* The client sent us a message. We need to
                          * relay this message to all the other clients
@@ -417,7 +428,7 @@ int main(void) {
                                 struct channel *ch = getChannel(arg);
                                 int channelnamelen = strlen(ch->name);
                                 c->currentchannel = chatMalloc(channelnamelen+1);
-                                memcpy(c->currentchannel,ch->name,channelnamelen);
+                                memcpy(c->currentchannel,ch->name,channelnamelen+1);
                                 ch->clients[c->fd] = c;
                                 ch->numclients++;
                                 char *welcomemsg = chatMalloc(channelnamelen+1);
@@ -425,21 +436,26 @@ int main(void) {
                                 if (write(c->fd,welcomemsg,strlen(welcomemsg)) == -1){
                                         perror("Writing error message");
                                 }
+                                recycleChannel();
                             }else if (!strcmp(readbuf, "/public")){
                                 struct channel *ch = getChannel(c->currentchannel);
                                 ch->clients[c->fd] = NULL;
                                 c->currentchannel = NULL;
-                                
+                                ch->numclients--;
                                 char *welcomemsg = "Back to public channel.\n";
                                 if (write(c->fd,welcomemsg,strlen(welcomemsg)) == -1){
                                         perror("Writing error message");
                                 }
+                                recycleChannel();
                             }
                             else {
                                 /* Unsupported command. Send an error. */
                                 char *errmsg = "Unsupported command\n";
                                 if (write(c->fd,errmsg,strlen(errmsg)) == -1){
                                         perror("Writing error message");
+                                }
+                                if (c->currentchannel){
+                                    writeChannelNameToClient(c->fd, c->currentchannel);
                                 }
                             }
                         } else {
