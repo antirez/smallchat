@@ -235,6 +235,21 @@ void sendMsgToAllClientsBut(int excluded, char *s, size_t len) {
     }
 }
 
+/* Create a message to send everybody
+ * (and show on the server console) in the form:
+ * nick> some message. */
+void onMessageRecv(struct client * client, char* readbuf, int client_id) {
+    char msg[256];
+    int msglen = snprintf(msg, sizeof(msg), "%s> %s", client->nick, readbuf);
+    if (msglen >= (int)sizeof(msg)) {
+        msglen = sizeof(msg)-1;
+    }
+    printf("%s",msg);	//@TODO: Should prohibit empty message
+
+    /* Send it to all the other clients. */
+    sendMsgToAllClientsBut(client_id, msg, msglen);
+}
+
 /* The main() function implements the main chat logic:
  * 1. Accept new clients connections if any.
  * 2. Check if any client sent us some new message.
@@ -302,8 +317,7 @@ int main(void) {
                     if (nread <= 0) {
                         /* Error or short read means that the socket
                          * was closed. */
-                        printf("Disconnected client fd=%d, nick=%s\n",
-                            j, Chat->clients[j]->nick);
+                        printf("Disconnected client fd=%d, nick=%s\n", j, Chat->clients[j]->nick);
                         freeClient(Chat->clients[j]);
                     } else {
                         /* The client sent us a message. We need to
@@ -332,25 +346,26 @@ int main(void) {
                                 free(c->nick);
                                 int nicklen = strlen(arg);
                                 c->nick = chatMalloc(nicklen+1);
-                                memcpy(c->nick,arg,nicklen+1);
+                                memcpy(c->nick,arg,nicklen+1);	//@TODO: Should prohibit empty name, remove prefix space
+                                char prompt[256];
+                                snprintf(prompt, sizeof(prompt), "set nick name to '%s' successfully\n", c->nick);
+                                write(c->fd, prompt, strlen(prompt));
+                            } else if ((!strcmp(readbuf,"/quit")) || (!strcmp(readbuf,"/exit"))) {
+                                write(c->fd,"byebye\n",strlen("byebye\n"));
+                                if(arg) {
+                                    char lastword[strlen(arg) + sizeof("\n")];
+                                    snprintf(lastword, sizeof(lastword), "%s\n", arg);
+                                    onMessageRecv(c, lastword, j);
+                                }
+                                printf("Client disconnected, fd=%d, nick=%s\n", j, Chat->clients[j]->nick);
+                                freeClient(Chat->clients[j]);
                             } else {
                                 /* Unsupported command. Send an error. */
                                 char *errmsg = "Unsupported command\n";
                                 write(c->fd,errmsg,strlen(errmsg));
                             }
                         } else {
-                            /* Create a message to send everybody (and show
-                             * on the server console) in the form:
-                             *   nick> some message. */
-                            char msg[256];
-                            int msglen = snprintf(msg, sizeof(msg),
-                                "%s> %s", c->nick, readbuf);
-                            if (msglen >= (int)sizeof(msg))
-                                msglen = sizeof(msg)-1;
-                            printf("%s",msg);
-
-                            /* Send it to all the other clients. */
-                            sendMsgToAllClientsBut(j,msg,msglen);
+                            onMessageRecv(c, readbuf, j);
                         }
                     }
                 }
