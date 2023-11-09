@@ -394,8 +394,12 @@ int main(void) {
                          * was closed. */
                         printf("Disconnected client fd=%d, nick=%s\n",
                             j, Chat->clients[j]->nick);
-                        freeClient(Chat->clients[j]);
+                        if(Chat->clients[j]->currentchannel){
+                            struct channel *ch = getChannel(Chat->clients[j]->currentchannel);
+                            ch->numclients--;
+                        }
                         recycleChannel();
+                        freeClient(Chat->clients[j]);
                     } else {
                         /* The client sent us a message. We need to
                          * relay this message to all the other clients
@@ -431,9 +435,12 @@ int main(void) {
                                 memcpy(c->currentchannel,ch->name,channelnamelen+1);
                                 ch->clients[c->fd] = c;
                                 ch->numclients++;
-                                char *welcomemsg = chatMalloc(channelnamelen+1);
-                                sprintf(welcomemsg, "Welcome to channel %s.\n(%s) ", c->currentchannel, c->currentchannel);
-                                if (write(c->fd,welcomemsg,strlen(welcomemsg)) == -1){
+                                char msg[256];
+                                int msglen = snprintf(msg, sizeof(msg),
+                                "Welcome to channel %s.\n(%s) ",  c->currentchannel, c->currentchannel);
+                                if (msglen >= (int)sizeof(msg))
+                                    msglen = sizeof(msg)-1;
+                                if (write(c->fd,msg,msglen) == -1){
                                         perror("Writing error message");
                                 }
                                 recycleChannel();
