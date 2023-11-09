@@ -274,7 +274,7 @@ void initChat(void) {
 void sendMsgToAllClientsBut(int excluded, char *s, size_t len) {
     for (int j = 0; j <= Chat->maxclient; j++) {
         if (Chat->clients[j] == NULL ||
-            Chat->clients[j]->fd == excluded) continue;
+            Chat->clients[j]->fd == excluded || Chat->clients[j]->currentchannel != NULL) continue;
 
         /* Important: we don't do ANY BUFFERING. We just use the kernel
          * socket buffers. If the content does not fit, we don't care.
@@ -282,6 +282,34 @@ void sendMsgToAllClientsBut(int excluded, char *s, size_t len) {
         if (write(Chat->clients[j]->fd,s,len) == -1){
                 perror("Sending message");
         }
+    }
+}
+
+void writeChannelNameToClient(int fd, char *channelname){
+    if (!channelname){
+        return;
+    }
+    char *channelmsg = chatMalloc(strlen(channelname)+3);
+    sprintf(channelmsg, "(%s) ", channelname);
+    if (write(fd,channelmsg,strlen(channelmsg)) == -1){
+            perror("Writing error message");
+    }
+}
+
+void sendMsgToChannelClientsBut(int excluded, char *channelname, char *s, size_t len) {
+    struct channel *ch = getChannel(channelname);
+
+    for (int j = 0; j <= Chat->maxclient; j++) {
+        if (ch->clients[j] == NULL ||
+            ch->clients[j]->fd == excluded) continue;
+
+        /* Important: we don't do ANY BUFFERING. We just use the kernel
+         * socket buffers. If the content does not fit, we don't care.
+         * This is needed in order to keep this program simple. */
+        if (write(ch->clients[j]->fd,s,len) == -1){
+                perror("Sending message");
+        }
+        writeChannelNameToClient(ch->clients[j]->fd, channelname);
     }
 }
 
@@ -425,16 +453,13 @@ int main(void) {
                                 msglen = sizeof(msg)-1;
                             printf("%s",msg);
                             if (c->currentchannel){
-                                char *channelmsg = chatMalloc(strlen(c->currentchannel)+2);
-                                sprintf(channelmsg, "(%s) ", c->currentchannel);
-                                if (write(c->fd,channelmsg,strlen(channelmsg)) == -1){
-                                        perror("Writing error message");
-                                }
-
+                                writeChannelNameToClient(c->fd, c->currentchannel);
+                                sendMsgToChannelClientsBut(j, c->currentchannel, msg, msglen);
+                            }else{
+                                /* Send it to all the other clients. */
+                                sendMsgToAllClientsBut(j,msg,msglen);
                             }
-                           
-                            /* Send it to all the other clients. */
-                            sendMsgToAllClientsBut(j,msg,msglen);
+                                                  
                         }
                     }
                 }
