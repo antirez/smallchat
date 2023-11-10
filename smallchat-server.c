@@ -254,6 +254,10 @@ int main(void) {
                             char msg[256];
                             int msglen = snprintf(msg, sizeof(msg),
                                 "%s> %s", c->nick, readbuf);
+
+                            /* snprintf() return value may be larger than
+                             * sizeof(msg) in case there is no room for the
+                             * whole output. */
                             if (msglen >= (int)sizeof(msg))
                                 msglen = sizeof(msg)-1;
                             printf("%s",msg);
