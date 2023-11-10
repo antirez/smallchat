@@ -142,6 +142,17 @@ void sendMsgToAllClientsBut(int excluded, char *s, size_t len) {
     }
 }
 
+/* Traverse all created clients and compare whether the nickname
+ * has been used. If it has been used, return 1,
+ * otherwise return 0 */
+int checkNickUsed(char* nick) {
+  for (int j = 0; j <= Chat->maxclient; ++j) {
+    if (Chat->clients[j] != NULL && !strcmp(nick, Chat->clients[j]->nick))
+      return 1;
+  }
+  return 0;
+}
+
 /* The main() function implements the main chat logic:
  * 1. Accept new clients connections if any.
  * 2. Check if any client sent us some new message.
@@ -236,6 +247,14 @@ int main(void) {
                             }
 
                             if (!strcmp(readbuf,"/nick") && arg) {
+				/*Checkif the nick is already in use */
+                                if (checkNickUsed(arg)) {
+                                    char *errmsg = "This nickname is already used by someone "
+                                                   "else, please try another one.\n";
+                                    write(c->fd, errmsg, strlen(errmsg));
+                                    continue;
+                                }
+
                                 free(c->nick);
                                 int nicklen = strlen(arg);
                                 c->nick = chatMalloc(nicklen+1);
