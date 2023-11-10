@@ -5,7 +5,11 @@ TLDR: This is just a programming example for a few friends of mine. It somehow t
 1. [First episode](https://www.youtube.com/watch?v=eT02gzeLmF0), how the basic server works.
 2. [Second episode](https://youtu.be/yogoUJ2zVYY), writing a simple client with raw terminal handling.
 
-Likely more will follow, stay tuned. And now, the full story:
+Likely more will follow, stay tuned.
+
+**IMPORTANT: a warning about PRs**: please note that most pull requests adding features will be refused, because the point of this repository is to improve it step by step in the next videos. We will do refactoring during live coding sessions (or explaining how the refactoring was needed in the video), introducing more libraries to improve the program inner working (linenoise, rax, and so forth). So if you want to improve the program as an exercise, go ahead! It's a great idea. But I will not merge new features here since the point of the program is to evolve it step by step during the videos.
+
+## And now, the full story:
 
 Yesterday I was talking with a few friends of mine, front-end developers mostly, who are a bit far from system programming. We were remembering the old times of IRC. And inevitably I said: that writing a very simple IRC server is an experience everybody should do (I showed them my implementation written in TCL; I was quite shocked that I wrote it 18 years ago: time passes fast). There are very interesting parts in such a program. A single process doing multiplexing, taking the client state and trying to access such state fast once a client has new data, and so forth.
 
