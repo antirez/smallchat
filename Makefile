@@ -9,3 +9,4 @@ smallchat-client: smallchat-client.c chatlib.c
 
 clean:
 	rm -f smallchat-server
+	rm -f smallchat-client

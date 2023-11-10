@@ -1,3 +1,4 @@
 .vscode
 smallchat.dSYM
-smallchat
+smallchat-server
+smallchat-client
