@@ -237,6 +237,11 @@ int main(int argc, char **argv) {
             } else if (FD_ISSET(stdin_fd, &readfds)) {
                 /* Data from the user typing on the terminal? */
                 ssize_t count = read(stdin_fd,buf,sizeof(buf));
+                /* Ignore up arrow otherwise horrible things happen. */
+                if(count == 3 && 
+                   buf[0] == 27 && buf[1] == 91 && buf[2] == 65){
+                    continue;
+                }
                 for (int j = 0; j < count; j++) {
                     int res = inputBufferFeedChar(&ib,buf[j]);
                     switch(res) {
