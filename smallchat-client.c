@@ -81,7 +81,7 @@ int setRawMode(int fd, int enable) {
     // raw.c_oflag &= ...
     /* control modes - set 8 bit chars */
     raw.c_cflag |= (CS8);
-    /* local modes - choing off, canonical off, no extended functions,
+    /* local modes - echoing off, canonical off, no extended functions,
      * but take signal chars (^Z,^C) enabled. */
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN);
     /* control chars - set return condition: min number of bytes and timer.
