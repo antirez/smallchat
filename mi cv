@@ -1,0 +1,41 @@
+<html>
+  <Docktype>
+<head>
+  <link rel="icon" href="cunlogo.png">
+
+  <title>
+            mi cv 
+            
+  </title>
+<style>
+  .circular--square {
+  border-top-left-radius: 40% 40%;
+  border-top-right-radius: 40% 40%;
+  border-bottom-right-radius: 40% 40%;
+  border-bottom-left-radius: 40% 40%;
+}
+
+#circle {
+    float: left;
+    width: 300px;
+    height: 300px;
+    margin: 20px;
+    shape-outside: circle();
+    clip-path: circle();
+    background: lightblue;
+}
+</style>
+</head>
+<body>
+
+<center><h1>Mi perfil</h1></center>
+
+<p> Estudiante de Ingeniería de sistemas en el 7 semestre, en la Corporación Unificada Nacional CUN .Persona responsable, Con conocimientos en el sector de mantenimiento de equipos, manejo básico de la suite adobe, paquete de office, calculo, programación orientada a objetos, lenguajes de programación como HTML 5, CSS, JavaScript, con un nivel de inglés Intermedio, conocimientos en redes, y plataformas como, Xampp. Experiencia en manejo de bases de datos y archivo. Persona dinámica, con habilidades de comunicación asertiva, orientación al cliente, trabajo en equipo, seguimiento de instrucciones, recursividad y persuasión y con firmes propósitos de afrontar y asumir retos y responsabilidades.
+</p>
+<center><img class="circular--square" src="foto.jpg" /></center>
+</body>
+<br><br><br>
+<footer>
+  <center>copyright 2023</center>
+</footer>
+</html>
