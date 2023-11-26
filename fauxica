@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fauxica</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Playfair+Display&family=Poppins:wght@200;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="icon" sizes="16x16 32x32 48x48" type="image/png" href="images/fauxica.svg " />
+</head>
+<body>
+    <div class="overlay"></div>
+    <div class="wrapper">
+        <header>
+            <a href="#"><img src="images/fauxica.svg" alt="Fauxica Logo"></a>
+            
+            <nav>
+                <ul>
+                    <li><a href="#" class="active">Home</a></li>
+                    <li><a href="#">Products</a></li>
+                    <li><a href="#">Gallery</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <div class="left-col">
+                <h1>Quality apparel without the price tag</h1>
+                <p class="subhead">
+                    No need to spend $xxx on apparel just for the name’s 
+                    sake. Our premium apparel is made from the same stuff.
+                </p>
+                <div class="cta-btns">
+                    <a href="#" class="primary-cta">Browse our collection</a>
+                    
+                    <a href="#" class="secondary-cta">
+                        <span>Spring '23 Collection</span>
+                        <svg viewBox="0 0 19 8" fill="none">
+                            <path d="M18.3536 4.35355C18.5488 4.15829 18.5488 3.84171 18.3536 3.64645L15.1716 0.464466C14.9763 0.269204 14.6597 0.269204 14.4645 0.464466C14.2692 0.659728 14.2692 0.976311 14.4645 1.17157L17.2929 4L14.4645 6.82843C14.2692 7.02369 14.2692 7.34027 14.4645 7.53553C14.6597 7.7308 14.9763 7.7308 15.1716 7.53553L18.3536 4.35355ZM0 4.5H18V3.5H0V4.5Z" fill="black"/>
+                        </svg> 
+                    </a>
+                </div>
+
+                <div class="news">
+                    <p class="employees">50K</p>
+                    <p class="details">
+                        We’re proud to announce that we now 
+                        employ a workforce of over <strong>50,000</strong>. 
+                        It’s all possible because of you.
+                    </p>
+                </div>
+            </div>
+            <div class="right-col">
+                <div class="card card1">
+                    <div class="card-details">
+                        <div>
+                            <a href="#" class="product-title">Fauxica Sport</a>
+                            <p>Running shoes</p>
+                        </div>
+                        <p class="product-price">$49</p>
+                    </div>
+                </div>
+                <div class="card card2">
+                    <div class="card-details">
+                        <div>
+                            <a href="#" class="product-title">Fauxica Sport</a>
+                            <p>Running shoes</p>
+                        </div>
+                        <p class="product-price">$49</p>
+                    </div>
+                </div>
+                <div class="card card3">
+                    <div class="card-details">
+                        <div>
+                            <a href="#" class="product-title">Fauxica Sport</a>
+                            <p>Running shoes</p>
+                        </div>
+                        <p class="product-price">$49</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+
+</body>
+</html>
