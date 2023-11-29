@@ -82,7 +82,7 @@ int TCPConnect(char *addr, int port, int nonblock) {
             continue;
 
         /* Put in non blocking state if needed. */
-        if (nonblock && socketSetNonBlockNoDelay(s) == -1) {
+        if (nonblock && (socketSetNonBlockNoDelay(s) == -1)) {
             close(s);
             break;
         }
