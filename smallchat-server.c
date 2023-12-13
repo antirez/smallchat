@@ -102,8 +102,10 @@ void freeClient(struct client *c) {
          * the new highest slot used. */
         int j;
         for (j = Chat->maxclient-1; j >= 0; j--) {
-            if (Chat->clients[j] != NULL) Chat->maxclient = j;
-            break;
+            if (Chat->clients[j] != NULL) {
+                Chat->maxclient = j;
+                break;
+            }
         }
         if (j == -1) Chat->maxclient = -1; // We no longer have clients.
     }
@@ -252,6 +254,10 @@ int main(void) {
                             char msg[256];
                             int msglen = snprintf(msg, sizeof(msg),
                                 "%s> %s", c->nick, readbuf);
+
+                            /* snprintf() return value may be larger than
+                             * sizeof(msg) in case there is no room for the
+                             * whole output. */
                             if (msglen >= (int)sizeof(msg))
                                 msglen = sizeof(msg)-1;
                             printf("%s",msg);

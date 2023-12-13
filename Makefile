@@ -1,5 +1,5 @@
 all: smallchat-server smallchat-client
-CLAGS=-O2 -Wall -W -std=c99
+CFLAGS=-O2 -Wall -W -std=c99
 
 smallchat-server: smallchat-server.c chatlib.c
 	$(CC) smallchat-server.c chatlib.c -o smallchat-server $(CFLAGS)
@@ -12,4 +12,5 @@ test: smallchat-server smallchat-client
 	python3 -m unittest tests.py -v
 
 clean:
-	rm -f smallchat-server smallchat-client
+	rm -f smallchat-server
+	rm -f smallchat-client
