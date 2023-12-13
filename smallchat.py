@@ -12,7 +12,7 @@ class Client:
         self.notify_receive = notify_receive
         self.notify_close = notify_close
         self.fd = conn.fileno()
-        self.protocol = protocol_cls(self._received)
+        self.protocol = protocol_cls(self.notify_receive)
         self.out_buffer = bytearray()
 
     def raw_receive(self):
@@ -29,6 +29,7 @@ class Client:
             self.out_buffer = self.out_buffer[sent:]
 
     def send(self, msg):
+        # print(f"send msg: {msg}", file=sys.stderr)
         self.out_buffer += self.protocol.encode(msg)
 
 
@@ -59,6 +60,7 @@ class ChatClient(Client):
         self.nick = f"user:{conn.fileno()}"
 
     def _received(self, msg):
+        # print(f"received msg: {msg}", file=sys.stderr)
         if msg.startswith(PREFIX):
             self.nick = msg[len(PREFIX):].decode()
         else:
@@ -68,12 +70,12 @@ class ChatClient(Client):
 class ChatClients(Clients):
     def add(self, client):
         super().add(client)
-        print(f"Connected client fd={client.fd}, nick={client.nick}")
+        # print(f"Connected client fd={client.fd}, nick={client.nick}")
         client.send(WELCOME)
 
     def delete(self, client):
         super().delete(client)
-        print(f"Disconnected client fd={client.fd}, nick={client.nick}")
+        # print(f"Disconnected client fd={client.fd}, nick={client.nick}")
 
     def publish(self, sender, msg):
         response = sender.nick.encode() + b"> " + msg
@@ -85,8 +87,9 @@ class ChatClients(Clients):
 class Protocol:
     END = b"\n"
 
-    def __init__(self, notify):
+    def __init__(self, notify, end=None):
         self.notify = notify
+        self.end = end or self.END
         self.buff = bytearray()
 
     @classmethod
@@ -103,12 +106,57 @@ class Protocol:
                 self.buff.append(car)
 
 
-def main(host, port):
-    address = (host, int(port))
+class Stream:
+    def __init__(self, stdin, stdout):
+        self.stdin = stdin
+        self.stdout = stdout
+        self.closed = False
+        self.send = None
+
+    def close(self):
+        self.closed = True
+
+    def raw_receive(self):
+        msg = self.stdin.readline().rstrip()
+        self.send(msg.encode())
+
+    def receive(self, msg):
+        self.stdout.write(msg.decode() + "\n")
+        self.stdout.flush()
+
+    def raw_send(self):
+        pass # noop
+
+
+def _main_client(address):
+    stream = Stream(sys.stdin, sys.stdout)
+
+    with socket.socket() as conn:
+        conn.connect(address)
+        client = Client(conn, Protocol, notify_receive=stream.receive, notify_close=stream.close)
+        stream.protocol = Protocol(client.send, "\n")
+        stream.send = client.send
+        inputs = [conn, sys.stdin]
+        outputs = [conn, sys.stdout]
+        clients = {conn: client, sys.stdin: stream, sys.stdout: stream}
+        while not stream.closed:
+            inputready, outputready, exceptready = select.select(inputs, outputs, [])
+            for s in inputready:
+                clients.get(s).raw_receive()
+            for s in outputready:
+                if s.fileno() <= 0:
+                    # sockets already closed during reception/recv
+                    continue
+                clients.get(s).raw_send()
+
+
+def _main_server(address):
     with socket.socket() as sl:
         sl.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sl.bind(address)
         sl.listen()
+        sys.stdout.write(f"Server started address={address}\n")
+        sys.stdout.flush()
         inputs = [sl]
         outputs = []
         clients = ChatClients(inputs, outputs)
@@ -120,17 +168,18 @@ def main(host, port):
                     client = ChatClient(conn, Protocol, clients.publish, clients.delete)
                     clients.add(client)
                 else:
-                    client = clients.get(s)
-                    assert client.conn == s
-                    client.raw_receive()
+                    clients.get(s).raw_receive()
             for s in outputready:
                 if s.fileno() <= 0:
                     # sockets already closed during reception/recv
                     continue
-                client = clients.get(s)
-                assert client.conn == s
-                client.raw_send()
+                clients.get(s).raw_send()
 
+
+def main(role, host, port):
+    fun = globals()["_main_" + role]
+    address = (host, int(port))
+    fun(address)
 
 
 if __name__ == '__main__':
