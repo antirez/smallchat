@@ -43,7 +43,6 @@
  * =========================================================================== */
 
 #define MAX_CLIENTS 1000 // This is actually the higher file descriptor.
-#define SERVER_PORT 7711
 
 /* This structure represents a connected client. There is very little
  * info about it: the socket descriptor and the nick name, if set, otherwise
@@ -113,7 +112,7 @@ void freeClient(struct client *c) {
 }
 
 /* Allocate and init the global stuff. */
-void initChat(void) {
+void initChat(unsigned short port) {
     Chat = chatMalloc(sizeof(*Chat));
     memset(Chat,0,sizeof(*Chat));
     /* No clients at startup, of course. */
@@ -122,7 +121,7 @@ void initChat(void) {
 
     /* Create our listening socket, bound to the given port. This
      * is where our clients will connect. */
-    Chat->serversock = createTCPServer(SERVER_PORT);
+    Chat->serversock = createTCPServer(port);
     if (Chat->serversock == -1) {
         perror("Creating listening socket");
         exit(1);
@@ -148,8 +147,12 @@ void sendMsgToAllClientsBut(int excluded, char *s, size_t len) {
  * 1. Accept new clients connections if any.
  * 2. Check if any client sent us some new message.
  * 3. Send the message to all the other clients. */
-int main(void) {
-    initChat();
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        printf("Usage: %s <port>\n", argv[0]);
+        exit(1);
+    }
+    initChat(atoi(argv[1]));
 
     while(1) {
         fd_set readfds;
